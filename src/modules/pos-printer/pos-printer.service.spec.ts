@@ -127,6 +127,38 @@ describe('PosPrinterService security boundaries', () => {
     expect(result.message).toBe('POS printer account created successfully');
   });
 
+  it('normalizes email before the global duplicate lookup and persistence', async () => {
+    await service.create(businessAdmin, {
+      email: '  Printer@Example.COM  ',
+      username: 'Verona',
+      password: 'Password@123',
+      branchId: 'branch-1',
+    });
+
+    expect(repository.findByEmail).toHaveBeenCalledWith('printer@example.com');
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'printer@example.com' }),
+    );
+  });
+
+  it('rejects a case-insensitive duplicate email before account creation', async () => {
+    repository.findByEmail.mockResolvedValue({
+      id: 'existing-printer',
+      deletedAt: null,
+    });
+
+    await expect(
+      service.create(businessAdmin, {
+        email: 'PRINTER@example.com',
+        username: 'Verona',
+        password: 'Password@123',
+        branchId: 'branch-1',
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(repository.findByEmail).toHaveBeenCalledWith('printer@example.com');
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
   it('rejects duplicate usernames before attempting account creation', async () => {
     repository.findByUsernameNormalized.mockResolvedValue({
       id: 'existing-printer',

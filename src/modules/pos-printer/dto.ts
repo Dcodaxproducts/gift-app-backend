@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
@@ -13,6 +14,9 @@ export class CreatePosPrinterAccountDto {
   @ApiPropertyOptional({
     description: 'Legacy email login (optional when username is supplied)',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   @IsOptional()
   @IsEmail()
   email?: string;

@@ -105,6 +105,44 @@ describe('PosPrinterService security boundaries', () => {
     );
   });
 
+  it('creates the reported username-only account without requiring email', async () => {
+    const result = await service.create(businessAdmin, {
+      username: 'Verona',
+      password: 'Password@123',
+      firstName: 'Haji',
+      lastName: 'Saad',
+      branchId: 'branch-1',
+    });
+
+    expect(repository.findByEmail).not.toHaveBeenCalled();
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'Verona',
+        usernameNormalized: 'verona',
+        firstName: 'Haji',
+        lastName: 'Saad',
+        branchId: 'branch-1',
+      }),
+    );
+    expect(result.message).toBe('POS printer account created successfully');
+  });
+
+  it('rejects duplicate usernames before attempting account creation', async () => {
+    repository.findByUsernameNormalized.mockResolvedValue({
+      id: 'existing-printer',
+      deletedAt: null,
+    });
+
+    await expect(
+      service.create(businessAdmin, {
+        username: 'Verona',
+        password: 'Password@123',
+        branchId: 'branch-1',
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
   it('allows scoped super admin staff to create a username credential', async () => {
     const staff = {
       uid: 'staff-1',
